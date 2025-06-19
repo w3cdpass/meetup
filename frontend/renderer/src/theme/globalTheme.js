@@ -12,6 +12,7 @@ export const Theme = {
     searchInout: '#f7f9f9',
     onchat: {
         active: '#e3f2fd',
-        inactive: '#bbdefb'
+        inactive: '#bbdefb',
+        borderColor: '#90caf9'
     }
 };
