@@ -61,7 +61,7 @@ export function Sidebar_Two() {
           </div>
         </div>
         <div
-          className="overflow-hidden hover:overflow-y-auto scrollbar scrollbar-thin scrollbar-track-sky-200  scrollbar-thumb-blue-400 max-h-[calc(100vh-112px)] px-2"
+          className="overflow-y-auto scrollbar scrollbar-thin scrollbar-track-sky-200  scrollbar-thumb-blue-400 max-h-[calc(100vh-112px)] px-2"
           style={{ scrollbarGutter: 'stable' }}
         >
         {fakeUser.map((ele, index) => (
