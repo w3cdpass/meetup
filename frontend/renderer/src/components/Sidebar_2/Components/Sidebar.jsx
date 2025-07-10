@@ -1,40 +1,42 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Theme } from "../../../theme/globalTheme";
 import Logo from "/logo.svg";
-import profile from "/profile.svg";
 import { Messaging } from "../../Message/Components/Message";
+import { useTyping } from "../../../context/TypingContext";
+import useOnline from '../../../utils/CheckOnline'
 
-const fakeUser = [
-  { id: 1, img: profile, name: "Rahul", msg: "hi! how are you." , timeLine:'3:34pm'},
-  { id: 2, img: profile, name: "Kiran", msg: "fuck u bitch", timeLine:'3:34pm' },
-  { id: 3, img: profile, name: "Rohan", msg: "Tiger is my fav animal", timeLine:'3:34pm' },
-  { id: 4, img: profile, name: "Abishek", msg: "allah hu akbar", timeLine:'3:34pm' },
-  { id: 5, img: profile, name: "Savita", msg: "hi! how are you.", timeLine:'3:34pm' },
-  { id: 6, img: profile, name: "Nigam", msg: "i will killu", timeLine:'3:34pm' },
-  { id: 7, img: profile, name: "Baljeet", msg: "frutti pine chale", timeLine:'3:34pm' },
-  { id: 8, img: profile, name: "pie", msg: "hi! how are you.", timeLine:'3:34pm' },
-  { id: 9, img: profile, name: "Lofar", msg: "1 2 ka 4", timeLine:'3:34pm' },
-  { id: 10, img: profile, name: "Rohan", msg: "Tiger is my fav animal", timeLine:'3:34pm' },
-  { id: 11, img: profile, name: "Abishek", msg: "allah hu akbar", timeLine:'3:34pm' },
-  { id: 12, img: profile, name: "Savita", msg: "hi! how are you.", timeLine:'3:34pm' },
-  { id: 13, img: profile, name: "Nigam", msg: "i will killu", timeLine:'3:34pm' },
-  { id: 14, img: profile, name: "Baljeet", msg: "frutti pine chale", timeLine:'3:34pm' },
-
-];
-export function Sidebar_Two() {
-  const [openMsg, setOpenMsg] = useState("");
+export function Sidebar_Two({ token }) {
+  const off = useOnline()
+  const {typingUsers} = useTyping()
   const [active, setActive] = useState(null);
-  function openComponent(id) {
-    setOpenMsg(true);
-    setActive(id);
-    console.log("onClick", id);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [friends, setFriends] = useState([]);
+  useEffect(() => {
+    fetch('http://localhost:3000/chats', {
+      method: "GET", 
+      credentials: "include",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const friends = data?.friends;
+        if (friends) {
+          setFriends(friends)
+        } else {
+          setFriends([])
+        }
+    }).catch((err) =>{
+      console.log('Failed to fetch Friends', err)
+    })
+  },[token])
+  
+  function handleFriendSelect(friend) {
+    setSelectedFriend(friend);
   }
-  // const isActive = (element ) => element ===  fakeUser.forEach((ele) => ele.id);
-  // console.log(isActive())
   return (
     <>
       <div
-        className=" w-[100%] md:w-[30%] py-5"
+        className=" w-[100%] md:w-[30%] "
         style={{ backgroundColor: Theme.secondaryBackgroundColor }}
       >
         <div className="flex justify-between px-5">
@@ -42,6 +44,7 @@ export function Sidebar_Two() {
             <p className="font-semibold">Chats</p>
             <p className="font-semibold">Streams</p>
           </div>
+          {!off && <h1>Offline</h1>}
           <div>
             <i className="fa-solid fa-tower-broadcast"></i>
           </div>
@@ -64,39 +67,48 @@ export function Sidebar_Two() {
           className="overflow-y-auto scrollbar scrollbar-thin scrollbar-track-sky-200  scrollbar-thumb-blue-400 max-h-[calc(100vh-112px)] px-2"
           style={{ scrollbarGutter: 'stable' }}
         >
-        {fakeUser.map((ele, index) => (
+        {friends.map((friend) => (
           <div
-            onClick={() => openComponent(ele.id)}
-            key={index}
-            className="px-5 flex items-start justify-between mb-1"
+            onClick={() => handleFriendSelect(friend)}
+            key={friend._id}
+            // className="px-5 py-1  flex items-start justify-between mb-1 rounded-sm"
+            className={`px-5 py-2 flex items-start justify-between mb-1 rounded-sm cursor-pointer ${
+                selectedFriend?._id === friend._id ? 'bg-blue-100 border border-blue-300' : 'bg-white'
+              }`}
             style={{
-              backgroundColor: active === ele.id
+              backgroundColor: active === friend.id
                 ? Theme.onchat.inactive
                 : Theme.onchat.active,
-              border: active === ele.id
+              border: active === friend.id
                 ? `1px solid ${Theme.onchat.borderColor}`: '',
             }}
           >
-            <div className="flex ">
-              <img className="w-15 mix-blend-multiply " src={ele.img} alt="" />
+            <div className="flex gap-2">
+              <img className="w-10 h-10 rounded-full mix-blend-multiply" src={friend.picture} alt={`profile picture of ${friend.name}`} />
               <div className="">
-                <span>{ele.name}</span>
-                <p className="text-sm">{ele.msg}</p>
+                <span>{friend.name}</span>
+                {/* {console.log(friend)} */}
+                {friend._id && typingUsers[friend._id] ? <p>typing ..</p> : ''
+                
+                }
               </div>
             </div>
-            <span>{ele.timeLine}</span>
+            <span>{friend.lastMessageAt 
+                  ? new Date(friend.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  : ''
+                }</span>
           </div>
         ))}
           </div>
       </div>
-      {!openMsg ? (
+      {!selectedFriend  ? (
         <div
           className="hidden md:flex w-[65%] p-1.5  py-5  justify-center items-center "
           style={{ backgroundColor: Theme.primaryBackgroundColor }}
         >
           <div className="flex justify-center">
             <div className="w-full">
-              <img className="w-full" src={Logo} alt="meetup logo" />
+              <img className="pic w-full" src={Logo} alt="meetup logo" />
               <p
                 className="text-2xl text-center text- font-semibold "
                 style={{ color: Theme.primaryTextColor }}
@@ -107,7 +119,7 @@ export function Sidebar_Two() {
           </div>
         </div>
       ) : (
-        <Messaging />
+        <Messaging slectedFriends={selectedFriend}  />
       )}
     </>
   );

@@ -1,0 +1,19 @@
+import profile from "/profile.svg";
+
+const fakeUser = [
+  { id: 1, img: profile, name: "Rahul", msg: "hi! how are you." , timeLine:'3:34pm'},
+  { id: 2, img: profile, name: "Kiran", msg: "fuck u bitch", timeLine:'3:34pm' },
+  { id: 3, img: profile, name: "Rohan", msg: "Tiger is my fav animal", timeLine:'3:34pm' },
+  { id: 4, img: profile, name: "Abishek", msg: "allah hu akbar", timeLine:'3:34pm' },
+  { id: 5, img: profile, name: "Savita", msg: "hi! how are you.", timeLine:'3:34pm' },
+  { id: 6, img: profile, name: "Nigam", msg: "i will killu", timeLine:'3:34pm' },
+  { id: 7, img: profile, name: "Baljeet", msg: "frutti pine chale", timeLine:'3:34pm' },
+  { id: 8, img: profile, name: "pie", msg: "hi! how are you.", timeLine:'3:34pm' },
+  { id: 9, img: profile, name: "Lofar", msg: "1 2 ka 4", timeLine:'3:34pm' },
+  { id: 10, img: profile, name: "Rohan", msg: "Tiger is my fav animal", timeLine:'3:34pm' },
+  { id: 11, img: profile, name: "Abishek", msg: "allah hu akbar", timeLine:'3:34pm' },
+  { id: 12, img: profile, name: "Savita", msg: "hi! how are you.", timeLine:'3:34pm' },
+  { id: 13, img: profile, name: "Nigam", msg: "i will killu", timeLine:'3:34pm' },
+  { id: 14, img: profile, name: "Baljeet", msg: "frutti pine chale", timeLine:'3:34pm' },
+
+];

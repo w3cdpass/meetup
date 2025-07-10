@@ -1,222 +1,351 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import profile from "/profile.svg";
+import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../../../context/AuthContex";
+import { Theme } from "../../../theme/globalTheme";
+import { addMessage } from "../../../redux/features/chats/chatSlice";
+import { fetchLastTwoDaysMessages } from "../../../redux/features/chats/chatThunks";
+import { formatDateHeader } from "../../../../utils/DateFormater";
+import { useTyping } from "../../../context/TypingContext";
+// const SOCKET_URL = "http://localhost:3000";
+import { useSocket } from "../../../context/SocketContext";
+export function Messaging({ slectedFriends }) {
+  const { socket, isReady } = useSocket();
+  const { user } = useAuth();
+  const { updateTyping } = useTyping();
+  const currentUserId = user?._id;
+  const dispatch = useDispatch();
+  const messages = useSelector((state) => state.chat.messages);
 
-export function Messaging() {
-  const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [typingUsers, setTypingUsers] = useState([]);
-  const socketRef = useRef(null);
-  const messagesEndRef = useRef(null);
+  const [message, setMessage] = useState("");
+  const [typingUserId, setTypingUserId] = useState(null);
   const typingTimeoutRef = useRef(null);
+  // const socketRef = useRef(null);
+  const messagesEndRef = useRef(null);
+  // Socket connection (only once)
+  // useEffect(() => {
+  //   socketRef.current = io(SOCKET_URL, { withCredentials: true });
+
+  //   return () => {
+  //     socketRef.current.disconnect();
+  //   };
+  // }, []);
+
+  // Fetch messages on chat change
+  useEffect(() => {
+    if (slectedFriends?.chatId) {
+      dispatch(fetchLastTwoDaysMessages(slectedFriends.chatId));
+    }
+  }, [slectedFriends, dispatch]);
+
+  // Handle incoming messages & typing indicators
+  // useEffect(() => {
+  //   const socket = socketRef.current;
+
+  //   const handleMessage = (data) => {
+  //     if (data.from === slectedFriends._id) {
+  //       dispatch(addMessage(data));
+  //     }
+  //   };
+
+  //   const handleTyping = ({ chatId, senderId }) => {
+  //     if (chatId === slectedFriends.chatId && senderId !== currentUserId) {
+  //       setTypingUserId(senderId);
+  //     }
+  //     updateTyping(senderId, true)
+  //     setTimeout(() => updateTyping(senderId, false), 400);
+  //   };
+
+  //   const handleStopTyping = ({ chatId, senderId }) => {
+  //     if (chatId === slectedFriends.chatId && senderId !== currentUserId) {
+  //       setTypingUserId(null);
+  //     }
+  //   };
+
+  //   socket.on("receive_message", handleMessage);
+  //   socket.on("user typing", handleTyping);
+  //   socket.on("user stop typing", handleStopTyping);
+
+  //   return () => {
+  //     socket.off("receive_message", handleMessage);
+  //     socket.off("user typing", handleTyping);
+  //     socket.off("user stop typing", handleStopTyping);
+  //   };
+  // }, [slectedFriends, currentUserId, dispatch]);
 
   useEffect(() => {
-    // Initialize Socket.IO connection
-    socketRef.current = io("http://localhost:3000", {
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
+    if (!socket || !slectedFriends?.chatId) return;
 
-    // Connection events
-    socketRef.current.on("connect", () => {
-      console.log("Connected to chat server");
-    });
-
-    // Message handling
-    socketRef.current.on("chat message", (msg) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          ...msg,
-          isCurrentUser: socketRef.current.id === msg.socketId,
-        },
-      ]);
-    });
-
-    // Typing indicators
-    socketRef.current.on("typing update", (userIds) => {
-      setTypingUsers(userIds);
-      setTypingUsers(userIds.map(id => `User ${id.slice(-4)}`));
-    });
-
-    // User join/leave notifications
-    socketRef.current.on("user connected", (username) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "notification",
-          text: `${username} joined the chat`,
-          timestamp: new Date(),
-        },
-      ]);
-    });
-
-    socketRef.current.on("user disconnected", (username) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "notification",
-          text: `${username} left the chat`,
-          timestamp: new Date(),
-        },
-      ]);
-    });
-
-    // Message status updates
-    socketRef.current.on("message status", ({ messageId, status }) => {
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === messageId ? { ...msg, status } : msg))
-      );
-    });
-
-    // Clean up on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
+    const handleMessage = (data) => {
+      if (data.from === slectedFriends._id) {
+        dispatch(addMessage(data));
       }
-      clearTimeout(typingTimeoutRef.current);
     };
-  }, []);
 
-  // Auto-scroll to bottom
+    // debounce
+
+    let typingTimeout;
+    const handleTyping = ({ chatId, senderId }) => {
+      if (chatId === slectedFriends.chatId && senderId !== currentUserId) {
+        setTypingUserId(senderId);
+        updateTyping(senderId, true);
+
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          updateTyping(senderId, false);
+          setTypingUserId(null);
+        }, 1000);
+      }
+    };
+
+    const handleStopTyping = ({ chatId, senderId }) => {
+      if (chatId === slectedFriends.chatId && senderId !== currentUserId) {
+        // no need to do anything here if you're using updateTyping
+      }
+    };
+
+    socket.on("receive_message", handleMessage);
+    socket.on("user typing", handleTyping);
+    socket.on("user stop typing", handleStopTyping);
+
+    return () => {
+      socket.off("receive_message", handleMessage);
+      socket.off("user typing", handleTyping);
+      socket.off("user stop typing", handleStopTyping);
+    };
+  }, [socket, slectedFriends, currentUserId, dispatch]);
+
+  const groupedMessages = useMemo(() => {
+    const groups = {};
+    for (const msg of messages) {
+      const header = formatDateHeader(msg.timestamp);
+      if (!groups[header]) groups[header] = [];
+      groups[header].push(msg);
+    }
+    return groups;
+  }, [messages]);
+  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (inputValue.trim() && socketRef.current?.connected) {
-      socketRef.current.emit("chat message", inputValue);
-      setInputValue("");
-      // Notify server we stopped typing
-      socketRef.current.emit("typing", false);
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-  };
-
   const handleInputChange = (e) => {
-    setInputValue(e.target.value);
+    const value = e.target.value;
+    setMessage(value);
 
-    // Notify server when user starts typing
-    if (!typingTimeoutRef.current) {
-      socketRef.current.emit("typing", true);
-    }
+    if (!socket || !slectedFriends.chatId) return;
 
-    // Reset typing timer
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      socketRef.current.emit("typing", false);
-      typingTimeoutRef.current = null;
-    }, 2000);
-  };
-
-  const formatTime = (date) => {
-    return new Date(date).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
+    socket.emit("typing", {
+      chatId: slectedFriends.chatId,
+      senderId: currentUserId,
     });
+
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    typingTimeoutRef.current = setTimeout(() => {
+      socket.emit("stop typing", {
+        chatId: slectedFriends.chatId,
+        senderId: currentUserId,
+      });
+    }, 400);
   };
 
-  // Mark messages as read when they become visible
-  const handleMessageViewed = (messageId) => {
-    socketRef.current.emit("message read", messageId);
+  const sendMessage = (e) => {
+    e.preventDefault();
+    if (!message.trim() || !socket) return;
+
+    const newMsg = {
+      from: currentUserId,
+      to: slectedFriends._id,
+      text: message,
+      timestamp: new Date().toISOString(),
+    };
+
+    socket.emit("send_message", newMsg);
+    dispatch(addMessage(newMsg));
+    setMessage("");
   };
 
   return (
-    <div className="hidden md:flex w-[65%] bg-gray-100 flex-col h-screen relative">
-      {/* Messages container */}
-      <div className="flex-1 scrollbar scrollbar-thin scrollbar-track-sky-200  scrollbar-thumb-blue-400 overflow-y-auto p-4 pb-20">
-        {/* Date separator */}
-        <div className="mt-10 flex justify-center items-center">
-          <hr className="text-gray-300 w-full" />
-          <div className="p-1 rounded-xl text-xs bg-gray-200 text-center absolute">
-            <span className="p-1">{new Date().toLocaleDateString()}</span>
+    <>
+      <div
+        className="max-md:hidden w-[65%] h-screen flex flex-col relative"
+        style={{ backgroundColor: Theme.primaryBackgroundColor }}
+      >
+        {/* Header */}
+        <header className="sticky top-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-sm p-4 flex items-center gap-3 z-10 border-b border-gray-100 dark:border-gray-700">
+          <img
+            src={slectedFriends.picture}
+            alt="profile"
+            className="w-10 h-10 rounded-full object-cover border-2 border-blue-100 dark:border-gray-600"
+          />
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-gray-800 dark:text-gray-100">
+                {slectedFriends.name}
+              </span>
+              <span className="w-2 h-2 bg-green-500 rounded-full "></span>
+              {/* {!off ? <span className="w-2 h-2 bg-green-500 rounded-full "></span> : <span className="w-2 h-2 rounded-full bg-green-500"></span>} */}
+            </div>
+            {typingUserId === slectedFriends._id && (
+              <span className=" absolute text-xs text-gray-500 dark:text-gray-400">
+                Typing...
+              </span>
+            )}
           </div>
-        </div>
+        </header>
 
-        {/* Messages */}
-        {messages.map((message, index) => {
-          if (message.type === "notification") {
+        {/* Messages Container */}
+        <main className="flex-1 pt-4 pb-10 overflow-y-auto flex flex-col scrollbar-thin scrollbar-thumb-blue-300 dark:scrollbar-thumb-blue-600 scrollbar-track-transparent">
+          {Object.entries(groupedMessages).map(([dateHeader, msgs]) => (
+            <div key={dateHeader} className="flex flex-col px-4 mb-4">
+              {/* Date header */}
+              <div className="sticky top-0 z-0 text-center mx-auto mb-3">
+                <span className="inline-block bg-gray-100 dark:bg-gray-700 text-xs font-medium py-1 px-3 rounded-full text-gray-600 dark:text-gray-300">
+                  {dateHeader}
+                </span>
+              </div>
+
+              {/* Messages */}
+              <div className="flex flex-col gap-2">
+                {msgs.map((msg, index) => {
+                  const isFromFriend =
+                    (msg.sender && msg.sender === slectedFriends._id) ||
+                    (msg.from && msg.from === slectedFriends._id);
+
+                  return (
+                    <div
+                      key={index}
+                      className={`flex ${
+                        isFromFriend ? "justify-start" : "justify-end"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[85%] md:max-w-[75%] px-4 py-2 text-sm rounded-2xl ${
+                          isFromFriend
+                            ? "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-tl-none shadow"
+                            : "bg-blue-500 text-white rounded-tr-none shadow"
+                        }`}
+                      >
+                        <p className="whitespace-pre-wrap break-words">
+                          {msg.text}
+                        </p>
+                        <small
+                          className={`block text-xs mt-1 ${
+                            isFromFriend
+                              ? "text-gray-500 dark:text-gray-400"
+                              : "text-blue-100"
+                          }`}
+                        >
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </small>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          <div ref={messagesEndRef} />
+        </main>
+
+        {/* Typing Indicator */}
+        {typingUserId === slectedFriends._id && (
+          <div className="absolute bottom-20 left-4  px-2 py-1 rounded-full  text-sm text-gray-600 dark:text-gray-300">
+            <span className="flex items-center ">
+              <div class="de">
+                <div class="bou"></div>
+                <div class="bou2"></div>
+                <div class="bou3"></div>
+              </div>
+            </span>
+          </div>
+        )}
+
+        {/* Message Input */}
+        <footer
+          className="sticky bottom-0 w-full px-4 py-3 border-t border-gray-100 dark:border-gray-700"
+          style={{ backgroundColor: Theme.thirdBackgroundColor }}
+        >
+          <form
+            onSubmit={sendMessage}
+            className="flex items-center gap-2 bg-white dark:bg-gray-700 p-2 rounded-full shadow"
+          >
+            <button
+              type="button"
+              className="text-blue-500 dark:text-blue-400 p-1"
+            >
+              <i className="fa-regular fa-face-smile text-xl"></i>
+            </button>
+            <input
+              type="text"
+              placeholder="Write a message..."
+              value={message}
+              onChange={handleInputChange}
+              onBlur={() =>
+                socket.emit("stop typing", {
+                  chatId: slectedFriends.chatId,
+                  senderId: currentUserId,
+                })
+              }
+              className="flex-1 px-3 py-2 outline-none bg-transparent text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500"
+            />
+            <button
+              type="submit"
+              className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded-full text-white font-medium text-sm transition-colors"
+            >
+              Send <i className="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+          </form>
+        </footer>
+      </div>
+    </>
+  );
+}
+
+{
+  /* {messages.map((msg, index) => {
+            const isFromFriend =
+              (msg.sender && msg.sender === slectedFriends._id) ||
+              (msg.from && msg.from === slectedFriends._id);
             return (
               <div
                 key={index}
-                className="text-center text-xs text-gray-500 my-2"
-              >
-                {message.text}
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={index}
-              className={`px-5 py-5 ${
-                message.isCurrentUser ? "flex flex-col place-items-end" : ""
-              }`}
-              onMouseEnter={() => handleMessageViewed(message.id)}
-            >
-              <div className="flex gap-2 place-items-baseline">
-                <img
-                  className="w-8 bg-amber-200 rounded-full"
-                  src={profile}
-                  alt="Profile"
-                />
-                <span className="text-xs">
-                  {!message.isCurrentUser && `${message.username} • `}
-                  {formatTime(message.timestamp)}
-                </span>
-                {
-                message.status === "read" ?
-                  <span className="text-xs text-blue-500">✓✓</span>
-                  :
-                  <span className="text-xs text-blue-500">✓</span>
-                }
-              </div>
-              <div
-                className={`p-2 rounded-lg inline-block max-w-xs ${
-                  message.isCurrentUser ? "bg-blue-100" : "bg-gray-200"
+                className={`max-w-[70%] px-4 py-2 shadow-sm text-sm ${
+                  isFromFriend
+                    ? "bg-white self-start text-gray-800 rounded-tr-2xl rounded-br-2xl rounded-sm"
+                    : "self-end text-right text-black client_1 rounded-tl-2xl rounded-bl-2xl rounded-sm"
                 }`}
               >
-                {message.text}
+                <div>
+                  <div>
+                    {(() => {
+                      const date = new Date(msg.timestamp);
+                      const day = date.toLocaleString("en-US", {
+                        weekday: "short",
+                      });
+                      const dayNum = date.getDate();
+                      const shortYear = date.getFullYear().toString().slice(-2);
+
+                      return (
+                        <>
+                          <span>{day}</span>-<span>{dayNum}</span>-
+                          <span>{shortYear}</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+                <p>{msg.text}</p>
+                <small className="block text-[0.65rem] text-gray-500 mt-1">
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </small>
               </div>
-            </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Typing indicator */}
-      {typingUsers.length > 0 && (
-        <div className="absolute bottom-30 left-0 right-0 text-center text-xs text-gray-500">
-          {typingUsers.join(", ")} {typingUsers.length > 1 ? "are" : "is"}{" "}
-          typing...
-        </div>
-      )}
-
-      {/* Input area */}
-      <div className="w-[calc(65%-1px)] fixed right-0 bottom-0 z-50 bg-gray-200 p-4 border-t border-gray-300">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <button type="button" className="text-gray-500">
-            <i className="fa-solid fa-paperclip"></i>
-          </button>
-          <input
-            className="flex-1 outline-none bg-white rounded-full px-4 py-2"
-            type="text"
-            placeholder="Type a message..."
-            value={inputValue}
-            onChange={handleInputChange}
-          />
-          <button
-            type="submit"
-            className="text-blue-500 disabled:text-gray-400"
-            disabled={!inputValue.trim()}
-          >
-            <i className="fa-solid fa-paper-plane"></i>
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+            );
+          })} */
 }

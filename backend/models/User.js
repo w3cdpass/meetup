@@ -1,41 +1,39 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
+const userSchema = new mongoose.Schema({
+    googleId: { type: String, required: true, unique: true },
+    email: String,
+    name: String,
+    picture: String,
 
-const readStatusSchema = new mongoose.Schema({
-    status: Boolean,
-    timestamp: {
-        type: Date,
-        default: Date.now
-    }
-})
+    friends: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    chats: [{ type: Schema.Types.ObjectId, ref: 'Chat' }],
+    friendRequestsSent: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 
+    friendRequestsReceived: [{ type: Schema.Types.ObjectId, ref: 'User' }],
 
-const deliveredStatusSchema = new mongoose.Schema({
-    status: Boolean,
-    timestamp: {
-        type: Date,
-        default: Date.now
-    }
-})
-
-const messageSchema = new mongoose.Schema({
-    text: String,
-    read: readStatusSchema,
-    deliverd: deliveredStatusSchema,
-    socketId: { type: String, required: true },
-    isCurrentUser: Boolean,
-    timestamp: {
-        type: Date,
-        default: Date.now
-    },
-},{ _id: true })
-
-const usernameSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    password: { type: String, required: true },
-    messages: [messageSchema],
-    lastActive: {type: Date, default: Date.now},
     socketId: String,
-}, { strict: true })
+}, { timestamps: true });
 
-module.exports = mongoose.model('User', usernameSchema);
-// This schema defines a User model with a username, password, and an array of messages.
+const User = mongoose.model('User', userSchema);
+
+
+const messageSchema = new Schema({
+    sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    text: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    status: {
+        type: String,
+        enum: ['sent', 'delivered', 'read'],
+        default: 'sent',
+    }
+});
+
+const chatSchema = new Schema({
+    participants: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
+    messages: [messageSchema],
+}, { timestamps: true });
+
+const Chat = mongoose.model('Chat', chatSchema,);
+
+module.exports = { User, Chat }
