@@ -7,7 +7,6 @@ import { addMessage } from "../../../redux/features/chats/chatSlice";
 import { fetchLastTwoDaysMessages } from "../../../redux/features/chats/chatThunks";
 import { formatDateHeader } from "../../../../utils/DateFormater";
 import { useTyping } from "../../../context/TypingContext";
-// const SOCKET_URL = "http://localhost:3000";
 import { useSocket } from "../../../context/SocketContext";
 export function Messaging({ slectedFriends }) {
   const { socket, isReady } = useSocket();

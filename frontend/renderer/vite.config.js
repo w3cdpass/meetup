@@ -12,12 +12,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/socket.io': {
-        target: 'https://xp1b3hbq-3000.inc1.devtunnels.ms/',
+        target: 'https://meetup-backend-dwvk.onrender.com/',
         ws: true,
         changeOrigin: true
       },
       '/api': {
-        target: 'https://xp1b3hbq-3000.inc1.devtunnels.ms/',
+        target: 'https://meetup-backend-dwvk.onrender.com/',
         changeOrigin: true
       }
     },

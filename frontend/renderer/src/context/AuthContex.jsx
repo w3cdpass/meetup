@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   // Fetch user data from `/api/me`
   useEffect(() => {
     if (!user) {
-      fetch('http://localhost:3000/api/me', {
+      fetch(`${import.meta.env.VITE_BACK_DEV_API}/api/me`, {
         credentials: 'include',
       })
         .then((res) => (res.ok ? res.json() : Promise.reject()))

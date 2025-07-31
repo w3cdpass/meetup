@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
+
 const userSchema = new mongoose.Schema({
     googleId: { type: String, required: true, unique: true },
     email: String,
@@ -15,6 +16,27 @@ const userSchema = new mongoose.Schema({
     socketId: String,
 }, { timestamps: true });
 
+
+/**
+ *  @description UserSchema 
+ *  @borrows Google 
+ *  @alias GoogleId  `Logged in` Users google auth id 
+ * @alias email
+ * @alias picture
+ * 
+ * @example UserSchema :{
+ *  googleId,
+ * email,
+ * name,
+ * picture,
+ * friends,
+ * chats, 
+ * friendsRequestsSent,
+ * friendsRequestsReceived,
+ * socketId
+ *  }
+ * 
+ */
 const User = mongoose.model('User', userSchema);
 
 
@@ -29,6 +51,9 @@ const messageSchema = new Schema({
     }
 });
 
+/**
+ * @description `ChatSchema` that allow user chat with each others and Store chat history  
+ */
 const chatSchema = new Schema({
     participants: [{ type: Schema.Types.ObjectId, ref: 'User', required: true }],
     messages: [messageSchema],

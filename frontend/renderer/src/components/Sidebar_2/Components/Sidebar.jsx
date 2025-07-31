@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Theme } from "../../../theme/globalTheme";
 import Logo from "/logo.svg";
 import { Messaging } from "../../Message/Components/Message";
 import { useTyping } from "../../../context/TypingContext";
 import useOnline from '../../../utils/CheckOnline'
+import { UserContext } from "../../../context/Profile";
+import UserProfile from "../../Profile/PersonalInfo";
 
 export function Sidebar_Two({ token }) {
   const off = useOnline()
@@ -11,8 +13,9 @@ export function Sidebar_Two({ token }) {
   const [active, setActive] = useState(null);
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [friends, setFriends] = useState([]);
+  const {isProfile, setIsProfile} = useContext(UserContext)
   useEffect(() => {
-    fetch('http://localhost:3000/chats', {
+    fetch(`${import.meta.env.VITE_BACK_DEV_API}/chats`, {
       method: "GET", 
       credentials: "include",
       headers: { Authorization: `Bearer ${token}` },
@@ -33,6 +36,16 @@ export function Sidebar_Two({ token }) {
   function handleFriendSelect(friend) {
     setSelectedFriend(friend);
   }
+
+  if (isProfile) {
+    return (
+      <div className="w-[65%] p-4 flex flex-col gap-4 bg-gray-500">
+        <button onClick={() => setIsProfile(false)} className="h-6 w-6 bg-blue-400 text-white rounded-full text-sm cursor-pointer"><li className="fa-solid fa-arrow-left"></li></button>
+        <UserProfile/>
+      </div>
+    )
+  }
+
   return (
     <>
       <div
